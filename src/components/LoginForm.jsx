@@ -1,20 +1,17 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { userService } from '../services/userService';
 
 const LoginForm = ({ onClose, onSwitchToRegister }) => {
-  const [loginData, setLoginData] = useState({
-    username: '',
-    password: ''
-  });
+  const [loginData, setLoginData] = useState({ username: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
 
+  const navigate = useNavigate();
+
   const handleChange = (e) => {
-    setLoginData({
-      ...loginData,
-      [e.target.name]: e.target.value
-    });
+    setLoginData({ ...loginData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
@@ -25,7 +22,16 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
     try {
       const result = await userService.login(loginData);
       console.log('Login successful:', result);
-      onClose(); // Закрываем модальное окно после успешного входа
+
+      // Сохраняем данные пользователя в localStorage
+      localStorage.setItem('user', JSON.stringify(result));
+
+      // Переходим на профиль
+      navigate('/profile');
+
+      // Закрываем модалку
+      onClose && onClose();
+
     } catch (err) {
       setError('Login failed. Please check your credentials.');
     } finally {
@@ -41,7 +47,6 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Username */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Username</label>
           <input
@@ -55,12 +60,11 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
           />
         </div>
 
-        {/* Password */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
           <div className="relative">
             <input
-              type={showPassword ? "text" : "password"}
+              type={showPassword ? 'text' : 'password'}
               name="password"
               value={loginData.password}
               onChange={handleChange}
@@ -78,10 +82,8 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
           </div>
         </div>
 
-        {/* Error Message */}
         {error && <p className="text-red-600 text-sm">{error}</p>}
 
-        {/* Submit Button */}
         <button
           type="submit"
           disabled={loading}
@@ -91,7 +93,6 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
         </button>
       </form>
 
-      {/* Switch to Register */}
       <p className="text-center text-sm text-gray-600 mt-6">
         Don't have an account?{' '}
         <button
