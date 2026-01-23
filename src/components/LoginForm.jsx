@@ -23,13 +23,12 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
       const result = await userService.login(loginData);
       console.log('Login successful:', result);
 
-      // Сохраняем данные пользователя в localStorage
+
       localStorage.setItem('user', JSON.stringify(result));
 
-      // Переходим на профиль
       navigate('/profile');
 
-      // Закрываем модалку
+
       onClose && onClose();
 
     } catch (err) {
