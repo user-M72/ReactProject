@@ -1,13 +1,25 @@
 import { useState, useEffect } from 'react';
+import { getTasks } from '../api/userApi';
 
 export default function ProfilePage() {
   const [user, setUser] = useState({ username: 'User', email: 'no-email' });
+  const [tasks, setTasks] = useState([]);
 
   useEffect(() => {
     // Получаем данные пользователя из localStorage
     const storedUser = JSON.parse(localStorage.getItem('user'));
     if (storedUser) setUser(storedUser);
+    fetchTasks()
   }, []);
+
+  const fetchTasks = async () => {
+    try {
+      const response = await getTasks(0, 10);
+      setTasks(response.data.content); // <-- usually Page.content
+    } catch (error) {
+      console.error("Failed to fetch tasks", error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
@@ -46,6 +58,10 @@ export default function ProfilePage() {
             </div>
             <h2 className="mt-6 text-3xl font-bold text-gray-900">{user.username}</h2>
             <p className="text-gray-600 text-lg mb-6">{user.email}</p>
+
+            {
+              tasks.map(t => <div><h4>{t.title}</h4><p>{t.description}</p><br/><br/><br/><br/></div>)
+            }
           </div>
         </div>
       </section>
