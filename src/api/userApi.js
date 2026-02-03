@@ -12,8 +12,15 @@ export const loginUser = (data) => {
     return api.post("/api/users/v1/login", data);
   };
 
-export const getTasks = (page, size) => {
-  return api.get("/api/task/v1",  {
+  export const getTasksForAssignee = (userId, page, size) => {
+    return api.get(`/api/task/v1/assignee/${userId}`, {  // ✅ Убрана двойная "s"
+      params: { page, size }
+    });
+  };
+
+// ✅ НОВОЕ: Получить задачи по creator (создателю)
+export const getTasksForCreator = (userId, page, size) => {
+  return api.get(`/api/task/v1/creator/${userId}`, {
     params: { page, size }
   });
 };
