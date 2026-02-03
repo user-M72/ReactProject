@@ -8,7 +8,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, userId }) => {
     status: 'NEW',
     priority: 'MEDIUM',
     dueDate: '',
-    category: '',
+    project: '',  // ✅ Изменено с category на project
     assigneeId: userId,
     creatorId: userId
   });
@@ -70,14 +70,22 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, userId }) => {
     setError(null);
 
     try {
+      // ✅ ИСПРАВЛЕНО: Правильное форматирование данных
       const taskData = {
-        ...formData,
+        title: formData.title,
+        description: formData.description,
+        status: formData.status,
+        priority: formData.priority,
+        // ✅ Преобразуем дату в формат LocalDateTime (yyyy-MM-ddTHH:mm:ss)
+        dueDate: formData.dueDate ? `${formData.dueDate}T23:59:59` : null,
+        project: formData.project || null,  // ✅ Изменено с category
         assigneeId: userId,
         creatorId: userId
       };
 
-      console.log("Creating task:", taskData);
-      await createTask(taskData);
+      console.log("Creating task with data:", taskData);
+      const response = await createTask(taskData);
+      console.log("Task created successfully:", response);
       
       // Очистить форму
       setFormData({
@@ -86,7 +94,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, userId }) => {
         status: 'NEW',
         priority: 'MEDIUM',
         dueDate: '',
-        category: '',
+        project: '',
         assigneeId: userId,
         creatorId: userId
       });
@@ -95,7 +103,8 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, userId }) => {
       onClose();
     } catch (err) {
       console.error("Failed to create task:", err);
-      setError(err.response?.data?.message || 'Failed to create task');
+      console.error("Error response:", err.response);
+      setError(err.response?.data?.message || err.response?.data || 'Failed to create task');
     } finally {
       setLoading(false);
     }
@@ -187,7 +196,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, userId }) => {
             </div>
           </div>
 
-          {/* Due Date and Category */}
+          {/* Due Date and Project */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -204,22 +213,22 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, userId }) => {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Category
+                Project
               </label>
               <input
                 type="text"
-                name="category"
-                value={formData.category}
+                name="project"
+                value={formData.project}
                 onChange={handleChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="e.g., Work, Personal"
+                placeholder="e.g., Website Redesign"
               />
             </div>
           </div>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">
-              {error}
+              {typeof error === 'string' ? error : JSON.stringify(error)}
             </div>
           )}
 

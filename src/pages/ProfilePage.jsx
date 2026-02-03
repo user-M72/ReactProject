@@ -7,7 +7,7 @@ import {
   updateTaskStatus, 
   updateTaskPriority 
 } from '../api/userApi';
-import CreateTaskModal from '../components/CreateTaskModel'; // ✅ Добавьте импорт
+import CreateTaskModal from '../components/CreateTaskModel';
 
 export default function ProfilePage() {
   const [user, setUser] = useState({ username: 'User', email: 'no-email', id: null });
@@ -18,7 +18,7 @@ export default function ProfilePage() {
   const [priorities, setPriorities] = useState([]);
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editingField, setEditingField] = useState(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false); // ✅ Добавлено
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem('user'));
@@ -66,7 +66,6 @@ export default function ProfilePage() {
     }
   };
 
-  // ✅ ДОБАВЛЕНО: Обновление после создания задачи
   const handleTaskCreated = () => {
     if (user.id) {
       fetchAssigneeTasks(user.id);
@@ -264,17 +263,23 @@ export default function ProfilePage() {
                     )
                   )}
                   
+                  {/* ✅ ИСПРАВЛЕНО: Улучшенное отображение даты */}
                   {task.dueDate && (
                     <span className="text-sm text-gray-500 flex items-center gap-1">
                       <span>📅</span>
-                      {new Date(task.dueDate).toLocaleDateString()}
+                      {new Date(task.dueDate).toLocaleDateString('ru-RU', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
                     </span>
                   )}
 
-                  {task.category && (
+                  {/* ✅ ИСПРАВЛЕНО: category → project */}
+                  {task.project && (
                     <span className="text-sm text-gray-500 flex items-center gap-1">
                       <span>🏷️</span>
-                      {task.category}
+                      {task.project}
                     </span>
                   )}
                 </div>
@@ -329,7 +334,6 @@ export default function ProfilePage() {
 
         {/* Tasks Section with Tabs */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          {/* ✅ ОБНОВЛЕНО: Добавлена кнопка создания */}
           <div className="flex items-center justify-between mb-6 border-b border-gray-200 pb-4">
             <div className="flex space-x-1">
               <button
@@ -358,7 +362,6 @@ export default function ProfilePage() {
               <span className="px-4 py-2 bg-indigo-100 text-indigo-800 rounded-full font-semibold">
                 {activeTasks.length} {activeTasks.length === 1 ? 'Task' : 'Tasks'}
               </span>
-              {/* ✅ ДОБАВЛЕНА кнопка создания задачи */}
               <button
                 onClick={() => setIsCreateModalOpen(true)}
                 className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:shadow-lg transition flex items-center gap-2"
@@ -373,7 +376,6 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      {/* ✅ ДОБАВЛЕНО: Модальное окно создания задачи */}
       <CreateTaskModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
