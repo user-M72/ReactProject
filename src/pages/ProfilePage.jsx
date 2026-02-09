@@ -8,8 +8,10 @@ import {
   updateTaskPriority 
 } from '../api/userApi';
 import CreateTaskModal from '../components/CreateTaskModel';
+import { useTheme } from '../context/ThemeContext';
 
 export default function ProfilePage() {
+  const { theme, currentTheme, changeTheme, themes } = useTheme();
   const [user, setUser] = useState({ username: 'User', email: 'no-email', id: null });
   const [assigneeTasks, setAssigneeTasks] = useState([]);
   const [creatorTasks, setCreatorTasks] = useState([]);
@@ -20,7 +22,9 @@ export default function ProfilePage() {
   const [editingField, setEditingField] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [viewMode, setViewMode] = useState('list');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem('user'));
@@ -176,15 +180,14 @@ export default function ProfilePage() {
     return activeTasks.filter(task => task.priority === priority);
   };
 
-  // ✅ Получаем только приоритеты с задачами
   const getActivePriorities = () => {
     return priorities.filter(priority => getTasksByPriority(priority).length > 0);
   };
 
   const TaskCard = ({ task }) => (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
+    <div className={`${theme.isDark ? theme.cardBg : 'bg-white'} border ${theme.isDark ? theme.borderColor : 'border-gray-200'} rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer`}>
       <div className="flex items-start justify-between mb-2">
-        <h4 className="text-sm font-semibold text-gray-900 flex-1">
+        <h4 className={`text-sm font-semibold ${theme.isDark ? theme.textPrimary : 'text-gray-900'} flex-1`}>
           {task.title}
         </h4>
         {task.status && (
@@ -195,14 +198,14 @@ export default function ProfilePage() {
       </div>
       
       {task.description && (
-        <p className="text-xs text-gray-600 mb-3 line-clamp-2">
+        <p className={`text-xs ${theme.isDark ? theme.textSecondary : 'text-gray-600'} mb-3 line-clamp-2`}>
           {task.description}
         </p>
       )}
 
       <div className="flex flex-wrap gap-2 text-xs">
         {task.dueDate && (
-          <span className="text-gray-500 flex items-center gap-1">
+          <span className={`${theme.isDark ? theme.textSecondary : 'text-gray-500'} flex items-center gap-1`}>
             <span>📅</span>
             {new Date(task.dueDate).toLocaleDateString('ru-RU', {
               month: 'short',
@@ -211,7 +214,7 @@ export default function ProfilePage() {
           </span>
         )}
         {task.project && (
-          <span className="text-gray-500 flex items-center gap-1">
+          <span className={`${theme.isDark ? theme.textSecondary : 'text-gray-500'} flex items-center gap-1`}>
             <span>🏷️</span>
             {task.project}
           </span>
@@ -220,7 +223,6 @@ export default function ProfilePage() {
     </div>
   );
 
-  // ✅ Показываем только колонки с задачами
   const BoardView = () => {
     const activePriorities = getActivePriorities();
     
@@ -228,7 +230,7 @@ export default function ProfilePage() {
       return (
         <div className="text-center py-12">
           <div className="text-6xl mb-4">📝</div>
-          <p className="text-gray-500 text-lg">No tasks yet</p>
+          <p className={`${theme.isDark ? theme.textSecondary : 'text-gray-500'} text-lg`}>No tasks yet</p>
         </div>
       );
     }
@@ -248,7 +250,7 @@ export default function ProfilePage() {
                   {tasksInColumn.length}
                 </span>
               </div>
-              <div className="bg-gray-50 rounded-b-xl p-3 flex-1 min-h-[500px] space-y-3">
+              <div className={`${theme.isDark ? 'bg-gray-900' : 'bg-gray-50'} rounded-b-xl p-3 flex-1 min-h-[500px] space-y-3`}>
                 {tasksInColumn.map(task => (
                   <TaskCard key={task.id} task={task} />
                 ))}
@@ -265,7 +267,7 @@ export default function ProfilePage() {
       return (
         <div className="text-center py-12">
           <div className="text-6xl mb-4">📝</div>
-          <p className="text-gray-500 text-lg">No tasks yet</p>
+          <p className={`${theme.isDark ? theme.textSecondary : 'text-gray-500'} text-lg`}>No tasks yet</p>
         </div>
       );
     }
@@ -275,7 +277,7 @@ export default function ProfilePage() {
         {tasks.map((task, index) => (
           <div
             key={task.id || index}
-            className="group border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:border-indigo-300 transition-all duration-200"
+            className={`group border ${theme.isDark ? `${theme.cardBg} ${theme.borderColor}` : 'border-gray-200'} rounded-xl p-6 hover:shadow-lg hover:border-${theme.accent}-300 transition-all duration-200`}
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
@@ -283,7 +285,7 @@ export default function ProfilePage() {
                   {task.priority && (
                     editingTaskId === task.id && editingField === 'priority' ? (
                       <select
-                        className="text-lg px-2 py-1 rounded border border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className={`text-lg px-2 py-1 rounded border border-${theme.accent}-300 focus:outline-none focus:ring-2 focus:ring-${theme.accent}-500 ${theme.isDark ? 'bg-gray-700 text-white' : ''}`}
                         value={task.priority}
                         onChange={(e) => handlePriorityChange(task.id, e.target.value)}
                         onBlur={() => {
@@ -311,12 +313,12 @@ export default function ProfilePage() {
                     )
                   )}
                   
-                  <h4 className="text-xl font-semibold text-gray-900 group-hover:text-indigo-600 transition">
+                  <h4 className={`text-xl font-semibold ${theme.isDark ? theme.textPrimary : 'text-gray-900'} group-hover:text-${theme.accent}-600 transition`}>
                     {task.title}
                   </h4>
                 </div>
                 
-                <p className="text-gray-600 mb-4 leading-relaxed">
+                <p className={`${theme.isDark ? theme.textSecondary : 'text-gray-600'} mb-4 leading-relaxed`}>
                   {task.description}
                 </p>
 
@@ -324,7 +326,7 @@ export default function ProfilePage() {
                   {task.status && (
                     editingTaskId === task.id && editingField === 'status' ? (
                       <select
-                        className="px-3 py-1 rounded-full text-sm font-medium border border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className={`px-3 py-1 rounded-full text-sm font-medium border border-${theme.accent}-300 focus:outline-none focus:ring-2 focus:ring-${theme.accent}-500 ${theme.isDark ? 'bg-gray-700 text-white' : ''}`}
                         value={task.status}
                         onChange={(e) => handleStatusChange(task.id, e.target.value)}
                         onBlur={() => {
@@ -353,7 +355,7 @@ export default function ProfilePage() {
                   )}
                   
                   {task.dueDate && (
-                    <span className="text-sm text-gray-500 flex items-center gap-1">
+                    <span className={`text-sm ${theme.isDark ? theme.textSecondary : 'text-gray-500'} flex items-center gap-1`}>
                       <span>📅</span>
                       {new Date(task.dueDate).toLocaleDateString('ru-RU', {
                         year: 'numeric',
@@ -364,7 +366,7 @@ export default function ProfilePage() {
                   )}
 
                   {task.project && (
-                    <span className="text-sm text-gray-500 flex items-center gap-1">
+                    <span className={`text-sm ${theme.isDark ? theme.textSecondary : 'text-gray-500'} flex items-center gap-1`}>
                       <span>🏷️</span>
                       {task.project}
                     </span>
@@ -379,64 +381,69 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      <nav className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-lg">{user.username.charAt(0).toUpperCase()}</span>
-              </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                TaskHub
-              </span>
+    <div className={`h-screen bg-gradient-to-br ${theme.gradient} flex overflow-hidden`}>
+      {/* Левое боковое меню */}
+      <aside className={`${isSidebarOpen ? 'w-64' : 'w-20'} ${theme.sidebarBg} shadow-xl transition-all duration-300 h-full z-40 overflow-y-auto flex-shrink-0`}>
+        <div className="flex flex-col h-full">
+          {/* Хедер сайдбара */}
+          <div className={`p-4 border-b ${theme.isDark ? theme.borderColor : 'border-gray-200'}`}>
+            <div className="flex items-center justify-between mb-4">
+              {isSidebarOpen && (
+                <div className="flex items-center space-x-2">
+                  <div className={`w-8 h-8 bg-gradient-to-r ${theme.primary} rounded-lg flex items-center justify-center`}>
+                    <span className="text-white font-bold text-sm">{user.username.charAt(0).toUpperCase()}</span>
+                  </div>
+                  <span className={`text-lg font-bold bg-gradient-to-r ${theme.primary} bg-clip-text text-transparent`}>
+                    TaskHub
+                  </span>
+                </div>
+              )}
+              <button
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className={`p-2 ${theme.isDark ? theme.hoverBg : 'hover:bg-gray-100'} rounded-lg transition`}
+              >
+                <svg className={`w-5 h-5 ${theme.isDark ? 'text-gray-400' : 'text-gray-600'} transition-transform ${!isSidebarOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+              </button>
             </div>
-            
+
+            {/* User Profile Section */}
             <div className="relative">
               <button
                 onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                className="flex items-center space-x-3 hover:bg-gray-100 rounded-lg px-3 py-2 transition"
+                className={`w-full flex items-center gap-3 px-3 py-2 ${theme.isDark ? theme.hoverBg : 'hover:bg-gray-100'} rounded-lg transition`}
               >
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">{user.username.charAt(0).toUpperCase()}</span>
+                <div className={`w-10 h-10 bg-gradient-to-r ${theme.primary} rounded-full flex items-center justify-center flex-shrink-0`}>
+                  <span className="text-white font-bold text-lg">{user.username.charAt(0).toUpperCase()}</span>
                 </div>
-                <span className="hidden md:block text-gray-700 font-medium">{user.username}</span>
-                <svg className={`w-4 h-4 text-gray-500 transition-transform ${isProfileMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+                {isSidebarOpen && (
+                  <div className="flex-1 text-left overflow-hidden">
+                    <p className={`text-sm font-semibold ${theme.isDark ? theme.textPrimary : 'text-gray-900'} truncate`}>{user.username}</p>
+                    <p className={`text-xs ${theme.isDark ? theme.textSecondary : 'text-gray-500'} truncate`}>{user.email}</p>
+                  </div>
+                )}
               </button>
 
               {isProfileMenuOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setIsProfileMenuOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-20">
-                    <div className="px-4 py-3 border-b border-gray-200">
-                      <p className="text-sm text-gray-500">Signed in as</p>
-                      <p className="text-sm font-semibold text-gray-900 truncate">{user.username}</p>
-                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                  <div className={`absolute top-full left-0 mt-2 w-56 ${theme.isDark ? 'bg-gray-700' : 'bg-white'} rounded-xl shadow-2xl border ${theme.isDark ? theme.borderColor : 'border-gray-200'} py-2 z-20`}>
+                    <div className={`px-4 py-3 border-b ${theme.isDark ? theme.borderColor : 'border-gray-200'}`}>
+                      <p className={`text-sm ${theme.isDark ? 'text-gray-400' : 'text-gray-500'}`}>Signed in as</p>
+                      <p className={`text-sm font-semibold ${theme.isDark ? theme.textPrimary : 'text-gray-900'} truncate`}>{user.username}</p>
+                      <p className={`text-xs ${theme.isDark ? theme.textSecondary : 'text-gray-500'} truncate`}>{user.email}</p>
                     </div>
                     <div className="py-2">
-                      <button onClick={() => setIsProfileMenuOpen(false)} className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3">
+                      <button onClick={() => setIsProfileMenuOpen(false)} className={`w-full px-4 py-2 text-left text-sm ${theme.isDark ? `${theme.textPrimary} ${theme.hoverBg}` : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3`}>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
-                        Profile
-                      </button>
-                      <button onClick={() => { setIsProfileMenuOpen(false); setActiveTab('assignee'); }} className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                        My Tasks
-                      </button>
-                      <button onClick={() => { setIsProfileMenuOpen(false); setIsCreateModalOpen(true); }} className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        Create Task
+                        Profile Settings
                       </button>
                     </div>
-                    <div className="border-t border-gray-200 my-2"></div>
-                    <button onClick={() => { localStorage.removeItem('user'); window.location.href = '/'; }} className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3">
+                    <div className={`border-t ${theme.isDark ? theme.borderColor : 'border-gray-200'} my-2`}></div>
+                    <button onClick={() => { localStorage.removeItem('user'); window.location.href = '/'; }} className={`w-full px-4 py-2 text-left text-sm text-red-600 ${theme.isDark ? 'hover:bg-red-900/20' : 'hover:bg-red-50'} flex items-center gap-3`}>
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                       </svg>
@@ -447,69 +454,185 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
-        </div>
-      </nav>
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="bg-white rounded-2xl shadow-xl p-10 mb-8">
-          <div className="flex flex-col items-center text-center">
-            <div className="w-32 h-32 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
-              {user.username.charAt(0).toUpperCase()}
-            </div>
-            <h2 className="mt-6 text-3xl font-bold text-gray-900">{user.username}</h2>
-            <p className="text-gray-600 text-lg">{user.email}</p>
-          </div>
-        </div>
+          {/* Навигация */}
+          <nav className="flex-1 p-4 space-y-2">
+            <button
+              onClick={() => setActiveTab('assignee')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+                activeTab === 'assignee' 
+                  ? `bg-gradient-to-r ${theme.primary} text-white shadow-lg` 
+                  : `${theme.isDark ? `${theme.textSecondary} ${theme.hoverBg}` : 'text-gray-700 hover:bg-gray-100'}`
+              }`}
+            >
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              {isSidebarOpen && (
+                <div className="flex items-center justify-between flex-1">
+                  <span className="font-medium">My Tasks</span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${activeTab === 'assignee' ? 'bg-white/20' : 'bg-gray-200'}`}>
+                    {assigneeTasks.length}
+                  </span>
+                </div>
+              )}
+            </button>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <div className="flex items-center justify-between mb-6 border-b border-gray-200 pb-4">
-            <div className="flex space-x-1">
-              <button
-                onClick={() => setActiveTab('assignee')}
-                className={`px-6 py-3 font-medium transition ${activeTab === 'assignee' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
-              >
-                Assigned to Me ({assigneeTasks.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('creator')}
-                className={`px-6 py-3 font-medium transition ${activeTab === 'creator' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
-              >
-                Created by Me ({creatorTasks.length})
-              </button>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <div className="flex bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`px-3 py-1 rounded text-sm font-medium transition ${viewMode === 'list' ? 'bg-white text-indigo-600 shadow' : 'text-gray-600'}`}
-                >
-                  List
-                </button>
-                <button
-                  onClick={() => setViewMode('board')}
-                  className={`px-3 py-1 rounded text-sm font-medium transition ${viewMode === 'board' ? 'bg-white text-indigo-600 shadow' : 'text-gray-600'}`}
-                >
-                  Board
-                </button>
-              </div>
-              
-              <span className="px-4 py-2 bg-indigo-100 text-indigo-800 rounded-full font-semibold">
-                {activeTasks.length} {activeTasks.length === 1 ? 'Task' : 'Tasks'}
-              </span>
+            <button
+              onClick={() => setActiveTab('creator')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+                activeTab === 'creator' 
+                  ? `bg-gradient-to-r ${theme.primary} text-white shadow-lg` 
+                  : `${theme.isDark ? `${theme.textSecondary} ${theme.hoverBg}` : 'text-gray-700 hover:bg-gray-100'}`
+              }`}
+            >
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              {isSidebarOpen && (
+                <div className="flex items-center justify-between flex-1">
+                  <span className="font-medium">Created</span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${activeTab === 'creator' ? 'bg-white/20' : 'bg-gray-200'}`}>
+                    {creatorTasks.length}
+                  </span>
+                </div>
+              )}
+            </button>
+
+            <div className={`pt-4 border-t ${theme.isDark ? theme.borderColor : 'border-gray-200'} mt-4`}>
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:shadow-lg transition flex items-center gap-2"
+                className={`w-full flex items-center gap-3 px-4 py-3 bg-gradient-to-r ${theme.secondary} text-white rounded-lg hover:shadow-lg transition`}
               >
-                <span className="text-xl">+</span>
-                New Task
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                {isSidebarOpen && <span className="font-medium">New Task</span>}
               </button>
             </div>
-          </div>
 
-          {viewMode === 'board' ? <BoardView /> : <TaskList tasks={activeTasks} />}
+            {/* Переключатель тем */}
+            {isSidebarOpen && (
+              <div className={`pt-4 mt-4 border-t ${theme.isDark ? theme.borderColor : 'border-gray-200'}`}>
+                <div className="relative">
+                  <button
+                    onClick={() => setIsThemeMenuOpen(!isThemeMenuOpen)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 ${theme.isDark ? theme.hoverBg : 'hover:bg-gray-100'} rounded-lg transition`}
+                  >
+                    <span className="text-xl">{themes[currentTheme].icon}</span>
+                    <div className="flex-1 text-left">
+                      <p className={`text-sm font-medium ${theme.isDark ? theme.textPrimary : 'text-gray-900'}`}>Theme</p>
+                      <p className={`text-xs ${theme.isDark ? theme.textSecondary : 'text-gray-500'}`}>{themes[currentTheme].name}</p>
+                    </div>
+                    <svg className={`w-4 h-4 ${theme.isDark ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {isThemeMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setIsThemeMenuOpen(false)} />
+                      <div className={`absolute left-0 right-0 mt-2 ${theme.isDark ? 'bg-gray-700' : 'bg-white'} rounded-xl shadow-2xl border ${theme.isDark ? theme.borderColor : 'border-gray-200'} py-2 z-20 max-h-96 overflow-y-auto`}>
+                        <div className={`px-4 py-2 border-b ${theme.isDark ? theme.borderColor : 'border-gray-200'}`}>
+                          <p className={`text-xs font-semibold ${theme.isDark ? 'text-gray-400' : 'text-gray-500'} uppercase`}>Select Theme</p>
+                        </div>
+                        {Object.entries(themes).map(([key, themeOption]) => (
+                          <button
+                            key={key}
+                            onClick={() => {
+                              changeTheme(key);
+                              setIsThemeMenuOpen(false);
+                            }}
+                            className={`w-full px-4 py-3 text-left ${theme.isDark ? theme.hoverBg : 'hover:bg-gray-50'} transition flex items-center gap-3 ${currentTheme === key ? `bg-gradient-to-r ${themeOption.primary} text-white` : ''}`}
+                          >
+                            <span className="text-2xl">{themeOption.icon}</span>
+                            <span className={`font-medium ${currentTheme === key ? 'text-white' : theme.isDark ? theme.textPrimary : 'text-gray-900'}`}>
+                              {themeOption.name}
+                            </span>
+                            {currentTheme === key && (
+                              <svg className="w-5 h-5 ml-auto text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {isSidebarOpen && (
+              <div className={`pt-4 mt-4 border-t ${theme.isDark ? theme.borderColor : 'border-gray-200'}`}>
+                <h3 className={`px-4 text-xs font-semibold ${theme.isDark ? 'text-gray-500' : 'text-gray-500'} uppercase mb-2`}>Statistics</h3>
+                <div className="space-y-2">
+                  <div className={`px-4 py-2 ${theme.isDark ? 'bg-gray-700' : 'bg-gray-50'} rounded-lg`}>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className={theme.isDark ? theme.textSecondary : 'text-gray-600'}>Total Tasks</span>
+                      <span className={`font-bold ${theme.isDark ? theme.textPrimary : 'text-gray-900'}`}>{assigneeTasks.length + creatorTasks.length}</span>
+                    </div>
+                  </div>
+                  <div className={`px-4 py-2 bg-${theme.accent}-50 rounded-lg`}>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className={`text-${theme.accent}-600`}>Assigned</span>
+                      <span className={`font-bold text-${theme.accent}-900`}>{assigneeTasks.length}</span>
+                    </div>
+                  </div>
+                  <div className={`px-4 py-2 bg-purple-50 rounded-lg`}>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-purple-600">Created</span>
+                      <span className="font-bold text-purple-900">{creatorTasks.length}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </nav>
         </div>
-      </section>
+      </aside>
+
+      {/* Основной контент */}
+      <div className={`flex-1 flex flex-col h-full overflow-hidden`}>
+        <nav className={`${theme.navbarBg} backdrop-blur-md shadow-sm z-30 flex-shrink-0`}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <h1 className={`text-2xl font-bold ${theme.isDark ? theme.textPrimary : 'text-gray-900'}`}>
+                {activeTab === 'assignee' ? 'My Tasks' : 'Created by Me'}
+              </h1>
+              
+              <div className="flex items-center gap-3">
+                <div className={`flex ${theme.isDark ? 'bg-gray-700' : 'bg-gray-100'} rounded-lg p-1`}>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`px-3 py-1 rounded text-sm font-medium transition ${viewMode === 'list' ? `${theme.isDark ? 'bg-gray-600' : 'bg-white'} text-${theme.accent}-600 shadow` : theme.isDark ? 'text-gray-400' : 'text-gray-600'}`}
+                  >
+                    List
+                  </button>
+                  <button
+                    onClick={() => setViewMode('board')}
+                    className={`px-3 py-1 rounded text-sm font-medium transition ${viewMode === 'board' ? `${theme.isDark ? 'bg-gray-600' : 'bg-white'} text-${theme.accent}-600 shadow` : theme.isDark ? 'text-gray-400' : 'text-gray-600'}`}
+                  >
+                    Board
+                  </button>
+                </div>
+                
+                <span className={`px-4 py-2 bg-${theme.accent}-100 text-${theme.accent}-800 rounded-full font-semibold`}>
+                  {activeTasks.length} {activeTasks.length === 1 ? 'Task' : 'Tasks'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        <section className="flex-1 overflow-y-auto">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className={`${theme.isDark ? theme.cardBg : 'bg-white'} rounded-2xl shadow-xl p-8`}>
+              {viewMode === 'board' ? <BoardView /> : <TaskList tasks={activeTasks} />}
+            </div>
+          </div>
+        </section>
+      </div>
 
       <CreateTaskModal
         isOpen={isCreateModalOpen}
