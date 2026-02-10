@@ -15,6 +15,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState({ username: 'User', email: 'no-email', id: null });
   const [assigneeTasks, setAssigneeTasks] = useState([]);
   const [creatorTasks, setCreatorTasks] = useState([]);
+  const [completedTasks, setCompletedTasks] = useState([]);
   const [activeTab, setActiveTab] = useState('assignee');
   const [statuses, setStatuses] = useState([]);
   const [priorities, setPriorities] = useState([]);
@@ -35,6 +36,7 @@ export default function ProfilePage() {
       if (storedUser.id) {
         fetchAssigneeTasks(storedUser.id);
         fetchCreatorTasks(storedUser.id);
+        fetchCompletedTasks(storedUser.id);
       }
     }
     
@@ -62,10 +64,39 @@ export default function ProfilePage() {
     }
   };
 
+  const fetchCompletedTasks = async (userId) => {
+    try {
+      // Получаем все задачи пользователя
+      const assigneeResponse = await getTasksForAssignee(userId, 0, 100);
+      const creatorResponse = await getTasksForCreator(userId, 0, 100);
+      
+      const allTasks = [
+        ...(assigneeResponse.data.content || []),
+        ...(creatorResponse.data.content || [])
+      ];
+      
+      // Фильтруем только выполненные задачи (DONE или CANCELLED)
+      const completed = allTasks.filter(task => 
+        task.status === 'DONE' || task.status === 'CANCELLED'
+      );
+      
+      // Убираем дубликаты по ID
+      const uniqueCompleted = Array.from(
+        new Map(completed.map(task => [task.id, task])).values()
+      );
+      
+      setCompletedTasks(uniqueCompleted);
+    } catch (error) {
+      console.error("❌ Completed tasks error:", error);
+      setCompletedTasks([]);
+    }
+  };
+
   const handleTaskCreated = () => {
     if (user.id) {
       fetchAssigneeTasks(user.id);
       fetchCreatorTasks(user.id);
+      fetchCompletedTasks(user.id);
     }
   };
 
@@ -115,6 +146,17 @@ export default function ProfilePage() {
       setCreatorTasks(creatorTasks.map(task => 
         task.id === taskId ? { ...task, status: newStatus } : task
       ));
+      setCompletedTasks(completedTasks.map(task => 
+        task.id === taskId ? { ...task, status: newStatus } : task
+      ));
+      
+      // Refresh completed tasks if status changed to/from DONE or CANCELLED
+      if (newStatus === 'DONE' || newStatus === 'CANCELLED' || 
+          completedTasks.some(t => t.id === taskId)) {
+        if (user.id) {
+          fetchCompletedTasks(user.id);
+        }
+      }
       
       setEditingTaskId(null);
       setEditingField(null);
@@ -132,6 +174,9 @@ export default function ProfilePage() {
         task.id === taskId ? { ...task, priority: newPriority } : task
       ));
       setCreatorTasks(creatorTasks.map(task => 
+        task.id === taskId ? { ...task, priority: newPriority } : task
+      ));
+      setCompletedTasks(completedTasks.map(task => 
         task.id === taskId ? { ...task, priority: newPriority } : task
       ));
       
@@ -159,7 +204,7 @@ export default function ProfilePage() {
       'CRITICAL': 'bg-purple-600',
       'HIGH': 'bg-red-500',
       'MEDIUM': 'bg-yellow-500',
-      'LOW': 'bg-green-500'
+      'LOW': 'bg-cyan-500'
     };
     return colors[priority] || 'bg-gray-500';
   };
@@ -169,12 +214,12 @@ export default function ProfilePage() {
       'CRITICAL': '🟣',
       'HIGH': '🔴',
       'MEDIUM': '🟡',
-      'LOW': '🟢'
+      'LOW': '🔵'
     };
     return icons[priority] || '⚪';
   };
 
-  const activeTasks = activeTab === 'assignee' ? assigneeTasks : creatorTasks;
+  const activeTasks = activeTab === 'assignee' ? assigneeTasks : activeTab === 'creator' ? creatorTasks : completedTasks;
 
   const getTasksByPriority = (priority) => {
     return activeTasks.filter(task => task.priority === priority);
@@ -185,15 +230,40 @@ export default function ProfilePage() {
   };
 
   const TaskCard = ({ task }) => (
-    <div className={`${theme.isDark ? theme.cardBg : 'bg-white'} border ${theme.isDark ? theme.borderColor : 'border-gray-200'} rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer`}>
+    <div className={`${theme.isDark ? theme.cardBg : 'bg-white'} border ${theme.isDark ? theme.borderColor : 'border-gray-200'} rounded-lg p-4 hover:shadow-md transition-shadow`}>
       <div className="flex items-start justify-between mb-2">
         <h4 className={`text-sm font-semibold ${theme.isDark ? theme.textPrimary : 'text-gray-900'} flex-1`}>
           {task.title}
         </h4>
         {task.status && (
-          <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(task.status)}`}>
-            {task.status.replace('_', ' ')}
-          </span>
+          editingTaskId === task.id && editingField === 'status' ? (
+            <select
+              className={`text-xs px-2 py-1 rounded-full border focus:outline-none focus:ring-2 focus:ring-${theme.accent}-500 ${theme.isDark ? 'bg-gray-700 text-white' : ''}`}
+              value={task.status}
+              onChange={(e) => handleStatusChange(task.id, e.target.value)}
+              onBlur={() => {
+                setEditingTaskId(null);
+                setEditingField(null);
+              }}
+              autoFocus
+            >
+              {statuses.map(status => (
+                <option key={status} value={status}>
+                  {status.replace('_', ' ')}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <button
+              onClick={() => {
+                setEditingTaskId(task.id);
+                setEditingField('status');
+              }}
+              className={`text-xs px-2 py-1 rounded-full ${getStatusColor(task.status)} cursor-pointer hover:opacity-80 transition`}
+            >
+              {task.status.replace('_', ' ')}
+            </button>
+          )
         )}
       </div>
       
@@ -203,7 +273,39 @@ export default function ProfilePage() {
         </p>
       )}
 
-      <div className="flex flex-wrap gap-2 text-xs">
+      <div className="flex flex-wrap gap-2 text-xs items-center">
+        {task.priority && (
+          editingTaskId === task.id && editingField === 'priority' ? (
+            <select
+              className={`text-sm px-2 py-1 rounded border focus:outline-none focus:ring-2 focus:ring-${theme.accent}-500 ${theme.isDark ? 'bg-gray-700 text-white' : ''}`}
+              value={task.priority}
+              onChange={(e) => handlePriorityChange(task.id, e.target.value)}
+              onBlur={() => {
+                setEditingTaskId(null);
+                setEditingField(null);
+              }}
+              autoFocus
+            >
+              {priorities.map(priority => (
+                <option key={priority} value={priority}>
+                  {getPriorityIcon(priority)} {priority}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <button
+              onClick={() => {
+                setEditingTaskId(task.id);
+                setEditingField('priority');
+              }}
+              className="text-base hover:scale-110 transition cursor-pointer"
+              title={`Priority: ${task.priority}`}
+            >
+              {getPriorityIcon(task.priority)}
+            </button>
+          )
+        )}
+        
         {task.dueDate && (
           <span className={`${theme.isDark ? theme.textSecondary : 'text-gray-500'} flex items-center gap-1`}>
             <span>📅</span>
@@ -387,7 +489,7 @@ export default function ProfilePage() {
         <div className="flex flex-col h-full">
           {/* Хедер сайдбара */}
           <div className={`p-4 border-b ${theme.isDark ? theme.borderColor : 'border-gray-200'}`}>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between">
               {isSidebarOpen && (
                 <div className="flex items-center space-x-2">
                   <div className={`w-8 h-8 bg-gradient-to-r ${theme.primary} rounded-lg flex items-center justify-center`}>
@@ -406,52 +508,6 @@ export default function ProfilePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
                 </svg>
               </button>
-            </div>
-
-            {/* User Profile Section */}
-            <div className="relative">
-              <button
-                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                className={`w-full flex items-center gap-3 px-3 py-2 ${theme.isDark ? theme.hoverBg : 'hover:bg-gray-100'} rounded-lg transition`}
-              >
-                <div className={`w-10 h-10 bg-gradient-to-r ${theme.primary} rounded-full flex items-center justify-center flex-shrink-0`}>
-                  <span className="text-white font-bold text-lg">{user.username.charAt(0).toUpperCase()}</span>
-                </div>
-                {isSidebarOpen && (
-                  <div className="flex-1 text-left overflow-hidden">
-                    <p className={`text-sm font-semibold ${theme.isDark ? theme.textPrimary : 'text-gray-900'} truncate`}>{user.username}</p>
-                    <p className={`text-xs ${theme.isDark ? theme.textSecondary : 'text-gray-500'} truncate`}>{user.email}</p>
-                  </div>
-                )}
-              </button>
-
-              {isProfileMenuOpen && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setIsProfileMenuOpen(false)} />
-                  <div className={`absolute top-full left-0 mt-2 w-56 ${theme.isDark ? 'bg-gray-700' : 'bg-white'} rounded-xl shadow-2xl border ${theme.isDark ? theme.borderColor : 'border-gray-200'} py-2 z-20`}>
-                    <div className={`px-4 py-3 border-b ${theme.isDark ? theme.borderColor : 'border-gray-200'}`}>
-                      <p className={`text-sm ${theme.isDark ? 'text-gray-400' : 'text-gray-500'}`}>Signed in as</p>
-                      <p className={`text-sm font-semibold ${theme.isDark ? theme.textPrimary : 'text-gray-900'} truncate`}>{user.username}</p>
-                      <p className={`text-xs ${theme.isDark ? theme.textSecondary : 'text-gray-500'} truncate`}>{user.email}</p>
-                    </div>
-                    <div className="py-2">
-                      <button onClick={() => setIsProfileMenuOpen(false)} className={`w-full px-4 py-2 text-left text-sm ${theme.isDark ? `${theme.textPrimary} ${theme.hoverBg}` : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3`}>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                        Profile Settings
-                      </button>
-                    </div>
-                    <div className={`border-t ${theme.isDark ? theme.borderColor : 'border-gray-200'} my-2`}></div>
-                    <button onClick={() => { localStorage.removeItem('user'); window.location.href = '/'; }} className={`w-full px-4 py-2 text-left text-sm text-red-600 ${theme.isDark ? 'hover:bg-red-900/20' : 'hover:bg-red-50'} flex items-center gap-3`}>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                      </svg>
-                      Sign out
-                    </button>
-                  </div>
-                </>
-              )}
             </div>
           </div>
 
@@ -494,6 +550,27 @@ export default function ProfilePage() {
                   <span className="font-medium">Created</span>
                   <span className={`text-xs px-2 py-1 rounded-full ${activeTab === 'creator' ? 'bg-white/20' : 'bg-gray-200'}`}>
                     {creatorTasks.length}
+                  </span>
+                </div>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('completed')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+                activeTab === 'completed' 
+                  ? `bg-gradient-to-r ${theme.primary} text-white shadow-lg` 
+                  : `${theme.isDark ? `${theme.textSecondary} ${theme.hoverBg}` : 'text-gray-700 hover:bg-gray-100'}`
+              }`}
+            >
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {isSidebarOpen && (
+                <div className="flex items-center justify-between flex-1">
+                  <span className="font-medium">Completed</span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${activeTab === 'completed' ? 'bg-white/20' : 'bg-gray-200'}`}>
+                    {completedTasks.length}
                   </span>
                 </div>
               )}
@@ -585,6 +662,12 @@ export default function ProfilePage() {
                       <span className="font-bold text-purple-900">{creatorTasks.length}</span>
                     </div>
                   </div>
+                  <div className={`px-4 py-2 bg-green-50 rounded-lg`}>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-green-600">Completed</span>
+                      <span className="font-bold text-green-900">{completedTasks.length}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -598,7 +681,7 @@ export default function ProfilePage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <h1 className={`text-2xl font-bold ${theme.isDark ? theme.textPrimary : 'text-gray-900'}`}>
-                {activeTab === 'assignee' ? 'My Tasks' : 'Created by Me'}
+                {activeTab === 'assignee' ? 'My Tasks' : activeTab === 'creator' ? 'Created by Me' : 'Completed Tasks'}
               </h1>
               
               <div className="flex items-center gap-3">
@@ -620,6 +703,52 @@ export default function ProfilePage() {
                 <span className={`px-4 py-2 bg-${theme.accent}-100 text-${theme.accent}-800 rounded-full font-semibold`}>
                   {activeTasks.length} {activeTasks.length === 1 ? 'Task' : 'Tasks'}
                 </span>
+
+                {/* User Profile in Navbar */}
+                <div className="relative">
+                  <button
+                    onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                    className={`flex items-center gap-2 px-3 py-2 ${theme.isDark ? theme.hoverBg : 'hover:bg-gray-100'} rounded-lg transition`}
+                  >
+                    <div className={`w-8 h-8 bg-gradient-to-r ${theme.primary} rounded-full flex items-center justify-center`}>
+                      <span className="text-white font-bold text-sm">{user.username.charAt(0).toUpperCase()}</span>
+                    </div>
+                    <div className="hidden md:block text-left">
+                      <p className={`text-sm font-semibold ${theme.isDark ? theme.textPrimary : 'text-gray-900'}`}>{}</p>
+                    </div>
+                    <svg className={`w-4 h-4 ${theme.isDark ? 'text-gray-400' : 'text-gray-500'} transition-transform ${isProfileMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {isProfileMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsProfileMenuOpen(false)} />
+                      <div className={`absolute right-0 top-full mt-2 w-64 ${theme.isDark ? 'bg-gray-700' : 'bg-white'} rounded-xl shadow-2xl border ${theme.isDark ? theme.borderColor : 'border-gray-200'} py-2 z-50`}>
+                        <div className={`px-4 py-3 border-b ${theme.isDark ? theme.borderColor : 'border-gray-200'}`}>
+                          <p className={`text-sm ${theme.isDark ? 'text-gray-400' : 'text-gray-500'}`}>Signed in as</p>
+                          <p className={`text-sm font-semibold ${theme.isDark ? theme.textPrimary : 'text-gray-900'} truncate`}>{user.username}</p>
+                          <p className={`text-xs ${theme.isDark ? theme.textSecondary : 'text-gray-500'} truncate`}>{user.email}</p>
+                        </div>
+                        <div className="py-2">
+                          <button onClick={() => setIsProfileMenuOpen(false)} className={`w-full px-4 py-2 text-left text-sm ${theme.isDark ? `${theme.textPrimary} ${theme.hoverBg}` : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3`}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            Profile Settings
+                          </button>
+                        </div>
+                        <div className={`border-t ${theme.isDark ? theme.borderColor : 'border-gray-200'} my-2`}></div>
+                        <button onClick={() => { localStorage.removeItem('user'); window.location.href = '/'; }} className={`w-full px-4 py-2 text-left text-sm text-red-600 ${theme.isDark ? 'hover:bg-red-900/20' : 'hover:bg-red-50'} flex items-center gap-3`}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                          </svg>
+                          Sign out
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
