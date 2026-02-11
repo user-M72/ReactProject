@@ -8,6 +8,7 @@ import {
   updateTaskPriority 
 } from '../api/userApi';
 import CreateTaskModal from '../components/CreateTaskModel';
+import ProfileSettings from '../components/ProfileSettings';
 import { useTheme } from '../context/ThemeContext';
 
 export default function ProfilePage() {
@@ -24,6 +25,7 @@ export default function ProfilePage() {
   const [editingField, setEditingField] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isProfileSettingsOpen, setIsProfileSettingsOpen] = useState(false);
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [viewMode, setViewMode] = useState('list');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -49,7 +51,11 @@ export default function ProfilePage() {
   const fetchAssigneeTasks = async (userId) => {
     try {
       const response = await getTasksForAssignee(userId, 0, 10);
-      setAssigneeTasks(response.data.content || []);
+      // Фильтруем только активные задачи (не DONE и не CANCELLED)
+      const activeTasks = (response.data.content || []).filter(
+        task => task.status !== 'DONE' && task.status !== 'CANCELLED'
+      );
+      setAssigneeTasks(activeTasks);
     } catch (error) {
       console.error("❌ Assignee error:", error);
       setAssigneeTasks([]);
@@ -59,7 +65,11 @@ export default function ProfilePage() {
   const fetchCreatorTasks = async (userId) => {
     try {
       const response = await getTasksForCreator(userId, 0, 10);
-      setCreatorTasks(response.data.content || []);
+      // Фильтруем только активные задачи (не DONE и не CANCELLED)
+      const activeTasks = (response.data.content || []).filter(
+        task => task.status !== 'DONE' && task.status !== 'CANCELLED'
+      );
+      setCreatorTasks(activeTasks);
     } catch (error) {
       console.error("❌ Creator error:", error);
       setCreatorTasks([]);
@@ -127,6 +137,10 @@ export default function ProfilePage() {
     }
   };
 
+  const handleProfileUpdate = (updatedUser) => {
+    setUser(updatedUser);
+  };
+
   const fetchStatuses = async () => {
     try {
       const response = await getStatuses();
@@ -167,6 +181,7 @@ export default function ProfilePage() {
     try {
       await updateTaskStatus(taskId, newStatus);
       
+      // Обновляем задачи во всех списках
       setAssigneeTasks(assigneeTasks.map(task => 
         task.id === taskId ? { ...task, status: newStatus } : task
       ));
@@ -180,14 +195,12 @@ export default function ProfilePage() {
         task.id === taskId ? { ...task, status: newStatus } : task
       ));
       
-      // Refresh completed and cancelled tasks if status changed
-      if (newStatus === 'DONE' || newStatus === 'CANCELLED' || 
-          completedTasks.some(t => t.id === taskId) ||
-          cancelledTasks.some(t => t.id === taskId)) {
-        if (user.id) {
-          fetchCompletedTasks(user.id);
-          fetchCancelledTasks(user.id);
-        }
+      // Обновляем все списки, чтобы задачи исчезли из My Tasks/Created и появились в Completed/Cancelled
+      if (user.id) {
+        fetchAssigneeTasks(user.id);
+        fetchCreatorTasks(user.id);
+        fetchCompletedTasks(user.id);
+        fetchCancelledTasks(user.id);
       }
       
       setEditingTaskId(null);
@@ -823,7 +836,13 @@ export default function ProfilePage() {
                           <p className={`text-xs ${theme.isDark ? theme.textSecondary : 'text-gray-500'} truncate`}>{user.email}</p>
                         </div>
                         <div className="py-2">
-                          <button onClick={() => setIsProfileMenuOpen(false)} className={`w-full px-4 py-2 text-left text-sm ${theme.isDark ? `${theme.textPrimary} ${theme.hoverBg}` : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3`}>
+                          <button 
+                            onClick={() => {
+                              setIsProfileMenuOpen(false);
+                              setIsProfileSettingsOpen(true);
+                            }} 
+                            className={`w-full px-4 py-2 text-left text-sm ${theme.isDark ? `${theme.textPrimary} ${theme.hoverBg}` : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3`}
+                          >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
@@ -861,6 +880,14 @@ export default function ProfilePage() {
         onTaskCreated={handleTaskCreated}
         userId={user.id}
       />
+
+      {isProfileSettingsOpen && (
+        <ProfileSettings
+          user={user}
+          onClose={() => setIsProfileSettingsOpen(false)}
+          onUpdate={handleProfileUpdate}
+        />
+      )}
     </div>
   );
 }
