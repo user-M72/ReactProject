@@ -16,6 +16,7 @@ export default function ProfilePage() {
   const [assigneeTasks, setAssigneeTasks] = useState([]);
   const [creatorTasks, setCreatorTasks] = useState([]);
   const [completedTasks, setCompletedTasks] = useState([]);
+  const [cancelledTasks, setCancelledTasks] = useState([]);
   const [activeTab, setActiveTab] = useState('assignee');
   const [statuses, setStatuses] = useState([]);
   const [priorities, setPriorities] = useState([]);
@@ -37,6 +38,7 @@ export default function ProfilePage() {
         fetchAssigneeTasks(storedUser.id);
         fetchCreatorTasks(storedUser.id);
         fetchCompletedTasks(storedUser.id);
+        fetchCancelledTasks(storedUser.id);
       }
     }
     
@@ -75,10 +77,8 @@ export default function ProfilePage() {
         ...(creatorResponse.data.content || [])
       ];
       
-      // Фильтруем только выполненные задачи (DONE или CANCELLED)
-      const completed = allTasks.filter(task => 
-        task.status === 'DONE' || task.status === 'CANCELLED'
-      );
+      // Фильтруем только выполненные задачи (DONE)
+      const completed = allTasks.filter(task => task.status === 'DONE');
       
       // Убираем дубликаты по ID
       const uniqueCompleted = Array.from(
@@ -92,11 +92,38 @@ export default function ProfilePage() {
     }
   };
 
+  const fetchCancelledTasks = async (userId) => {
+    try {
+      // Получаем все задачи пользователя
+      const assigneeResponse = await getTasksForAssignee(userId, 0, 100);
+      const creatorResponse = await getTasksForCreator(userId, 0, 100);
+      
+      const allTasks = [
+        ...(assigneeResponse.data.content || []),
+        ...(creatorResponse.data.content || [])
+      ];
+      
+      // Фильтруем только отмененные задачи (CANCELLED)
+      const cancelled = allTasks.filter(task => task.status === 'CANCELLED');
+      
+      // Убираем дубликаты по ID
+      const uniqueCancelled = Array.from(
+        new Map(cancelled.map(task => [task.id, task])).values()
+      );
+      
+      setCancelledTasks(uniqueCancelled);
+    } catch (error) {
+      console.error("❌ Cancelled tasks error:", error);
+      setCancelledTasks([]);
+    }
+  };
+
   const handleTaskCreated = () => {
     if (user.id) {
       fetchAssigneeTasks(user.id);
       fetchCreatorTasks(user.id);
       fetchCompletedTasks(user.id);
+      fetchCancelledTasks(user.id);
     }
   };
 
@@ -149,12 +176,17 @@ export default function ProfilePage() {
       setCompletedTasks(completedTasks.map(task => 
         task.id === taskId ? { ...task, status: newStatus } : task
       ));
+      setCancelledTasks(cancelledTasks.map(task => 
+        task.id === taskId ? { ...task, status: newStatus } : task
+      ));
       
-      // Refresh completed tasks if status changed to/from DONE or CANCELLED
+      // Refresh completed and cancelled tasks if status changed
       if (newStatus === 'DONE' || newStatus === 'CANCELLED' || 
-          completedTasks.some(t => t.id === taskId)) {
+          completedTasks.some(t => t.id === taskId) ||
+          cancelledTasks.some(t => t.id === taskId)) {
         if (user.id) {
           fetchCompletedTasks(user.id);
+          fetchCancelledTasks(user.id);
         }
       }
       
@@ -177,6 +209,9 @@ export default function ProfilePage() {
         task.id === taskId ? { ...task, priority: newPriority } : task
       ));
       setCompletedTasks(completedTasks.map(task => 
+        task.id === taskId ? { ...task, priority: newPriority } : task
+      ));
+      setCancelledTasks(cancelledTasks.map(task => 
         task.id === taskId ? { ...task, priority: newPriority } : task
       ));
       
@@ -219,7 +254,10 @@ export default function ProfilePage() {
     return icons[priority] || '⚪';
   };
 
-  const activeTasks = activeTab === 'assignee' ? assigneeTasks : activeTab === 'creator' ? creatorTasks : completedTasks;
+  const activeTasks = activeTab === 'assignee' ? assigneeTasks : 
+                      activeTab === 'creator' ? creatorTasks : 
+                      activeTab === 'completed' ? completedTasks : 
+                      cancelledTasks;
 
   const getTasksByPriority = (priority) => {
     return activeTasks.filter(task => task.priority === priority);
@@ -273,7 +311,7 @@ export default function ProfilePage() {
         </p>
       )}
 
-      <div className="flex flex-wrap gap-2 text-xs items-center">
+      <div className="flex flex-wrap gap-2 text-xs items-center mb-3">
         {task.priority && (
           editingTaskId === task.id && editingField === 'priority' ? (
             <select
@@ -322,6 +360,30 @@ export default function ProfilePage() {
           </span>
         )}
       </div>
+
+      {/* Quick Action Buttons */}
+      {task.status !== 'DONE' && task.status !== 'CANCELLED' && (
+        <div className="flex gap-2 pt-2 border-t ${theme.isDark ? theme.borderColor : 'border-gray-200'}">
+          <button
+            onClick={() => handleStatusChange(task.id, 'DONE')}
+            className="flex-1 px-2 py-1 bg-green-100 hover:bg-green-200 text-green-800 rounded text-xs font-medium transition flex items-center justify-center gap-1"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            Done
+          </button>
+          <button
+            onClick={() => handleStatusChange(task.id, 'CANCELLED')}
+            className="flex-1 px-2 py-1 bg-red-100 hover:bg-red-200 text-red-800 rounded text-xs font-medium transition flex items-center justify-center gap-1"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Cancel
+          </button>
+        </div>
+      )}
     </div>
   );
 
@@ -576,6 +638,27 @@ export default function ProfilePage() {
               )}
             </button>
 
+            <button
+              onClick={() => setActiveTab('cancelled')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+                activeTab === 'cancelled' 
+                  ? `bg-gradient-to-r ${theme.primary} text-white shadow-lg` 
+                  : `${theme.isDark ? `${theme.textSecondary} ${theme.hoverBg}` : 'text-gray-700 hover:bg-gray-100'}`
+              }`}
+            >
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {isSidebarOpen && (
+                <div className="flex items-center justify-between flex-1">
+                  <span className="font-medium">Cancelled</span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${activeTab === 'cancelled' ? 'bg-white/20' : 'bg-gray-200'}`}>
+                    {cancelledTasks.length}
+                  </span>
+                </div>
+              )}
+            </button>
+
             <div className={`pt-4 border-t ${theme.isDark ? theme.borderColor : 'border-gray-200'} mt-4`}>
               <button
                 onClick={() => setIsCreateModalOpen(true)}
@@ -668,6 +751,12 @@ export default function ProfilePage() {
                       <span className="font-bold text-green-900">{completedTasks.length}</span>
                     </div>
                   </div>
+                  <div className={`px-4 py-2 bg-red-50 rounded-lg`}>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-red-600">Cancelled</span>
+                      <span className="font-bold text-red-900">{cancelledTasks.length}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -681,7 +770,10 @@ export default function ProfilePage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <h1 className={`text-2xl font-bold ${theme.isDark ? theme.textPrimary : 'text-gray-900'}`}>
-                {activeTab === 'assignee' ? 'My Tasks' : activeTab === 'creator' ? 'Created by Me' : 'Completed Tasks'}
+                {activeTab === 'assignee' ? 'My Tasks' : 
+                 activeTab === 'creator' ? 'Created by Me' : 
+                 activeTab === 'completed' ? 'Completed Tasks' : 
+                 'Cancelled Tasks'}
               </h1>
               
               <div className="flex items-center gap-3">
