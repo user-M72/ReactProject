@@ -59,3 +59,8 @@ export const deleteTask = (taskId) => {
 export const createTask = (data) => {
   return api.post("/api/task/v1", data);
 };
+
+// ⬅️ НОВЫЙ: Получить всех пользователей (для поиска исполнителя)
+export const getUsers = () => {
+  return api.get("/api/users/v1");
+};
